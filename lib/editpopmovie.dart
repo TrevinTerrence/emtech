@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:helloworld/class/genre.dart';
 import 'package:helloworld/class/popmovie.dart';
 import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 
 class EditPopMovie extends StatefulWidget {
   int movieID;
@@ -27,6 +28,7 @@ class EditPopMovieState extends State<EditPopMovie> {
   TextEditingController _runtimeCont = TextEditingController();
   TextEditingController _urlCont = TextEditingController();
   Widget comboGenre = Text('tambah genre');
+  Uint8List? _imageBytes;
 
   @override
   void initState() {
@@ -142,7 +144,7 @@ class EditPopMovieState extends State<EditPopMovie> {
 
   void addGenre(genre_id) async {
     final response = await http.post(
-        Uri.parse("https://ubaya.xyz/flutter/daniel/addmoviegenre.php"),
+        Uri.parse("https://ubaya.xyz/flutter/160721036/addmoviegenre.php"),
         body: {'genre_id': genre_id.toString(), 'movie_id': widget.movieID.toString()
         });
     if (response.statusCode == 200) {
@@ -179,6 +181,116 @@ class EditPopMovieState extends State<EditPopMovie> {
       }
     } else {
       throw Exception('Failed to delete genre');
+    }
+  }
+
+  void _showPicker(context) {
+    showModalBottomSheet(
+        context: context,
+        builder: (BuildContext bc) {
+          return SafeArea(
+            child: Container(
+              color: Colors.white,
+              child: Wrap(
+                children: <Widget>[
+                  ListTile(
+                      tileColor: Colors.white,
+                      leading: const Icon(Icons.photo_library),
+                      title: const Text('Galeri'),
+                      onTap: () {
+                        imgGaleri();
+                        Navigator.of(context).pop();
+                      }),
+                  ListTile(
+                    leading: const Icon(Icons.photo_camera),
+                    title: const Text('Kamera'),
+                    onTap: () {
+                      imgKamera();
+                      Navigator.of(context).pop();
+                    },
+                  ),
+                ],
+              ),
+            ),
+          );
+        });
+  }
+
+  imgGaleri() async {
+    final picker = ImagePicker();
+    final image = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 50,
+        maxHeight: 600,
+        maxWidth: 600);
+    if (image != null) {
+      final bytes = await image.readAsBytes();
+      setState(() {
+        _imageBytes = bytes;
+      });
+    }
+  }
+  imgKamera() async {
+    final picker = ImagePicker();
+    final image =
+    await picker.pickImage(
+        source: ImageSource.camera,
+        imageQuality: 20);
+    if (image != null) {
+      final bytes = await image.readAsBytes();
+      setState(() {
+        _imageBytes = bytes;
+      });
+    }
+  }
+
+  void uploadScene64() async {
+    String base64Image = base64Encode(_imageBytes!);
+    final response = await http.post(
+      Uri.parse("https://ubaya.xyz/flutter/160721036/uploadscene64.php"),
+      body: {
+        'movie_id': widget.movieID.toString(),
+        'image': base64Image,
+      },
+    );
+    if (response.statusCode == 200) {
+      Map json = jsonDecode(response.body);
+      if (json['result'] == 'success') {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Sukses mengupload Scene')));setState(() {
+    bacaData();
+    });
+    }
+    } else {
+    throw Exception('Failed to read API');
+    }
+  }
+
+  Future<void> deleteScene(String sceneFileName) async {
+    final response = await http.post(
+      Uri.parse("https://ubaya.xyz/flutter/160721036/deletemoviescene.php"),
+      body: {
+        'movie_id': widget.movieID.toString(),
+        'scene': sceneFileName,
+      },
+    );
+    if (response.statusCode == 200) {
+      final result = jsonDecode(response.body);
+      if (result['result'] == 'success') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Scene deleted successfully')),
+        );
+        setState(() {
+          bacaData();
+        });
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to delete the scene')),
+        );
+      }
+    } else {
+      throw Exception('Failed to delete scene');
     }
   }
 
@@ -307,7 +419,47 @@ class EditPopMovieState extends State<EditPopMovie> {
                           ],
                         );
                       })),
-
+            if(_pm != null)
+              Padding(
+                  padding: const EdgeInsets.all(10),
+                  child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: _pm!.scene!.length,
+                      itemBuilder: (BuildContext ctxt, int index) {
+                        String sceneFileName = _pm!.scene![index];
+                        return Row(
+                            children: [
+                         Image.network("https://ubaya.xyz/flutter/160721036/"+_pm?.scene?[index]),
+                              IconButton(
+                                icon: Icon(Icons.delete, color: Colors.red),
+                                onPressed: () {
+                                  deleteScene(sceneFileName);
+                                },
+                              ),
+                            ]);
+                      })),
+            if (_pm != null)
+              Padding(
+                padding: const EdgeInsets.all(10),
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: _pm!.scene!.length,
+                  itemBuilder: (BuildContext ctxt, int index) {
+                    String sceneFileName = _pm!.scene![index];
+                    return Row(
+                      children: [
+                        Image.network("https://ubaya.xyz/flutter/160721036/$sceneFileName"),
+                        IconButton(
+                          icon: Icon(Icons.delete, color: Colors.red),
+                          onPressed: () {
+                            deleteScene(sceneFileName);
+                          },
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
             Padding(
                 padding: const EdgeInsets.symmetric(vertical: 16.0),
                 child: comboGenre),
@@ -327,7 +479,29 @@ class EditPopMovieState extends State<EditPopMovie> {
                 child: Text('Submit'),
               ),
             ),
+            const Padding(
+                padding: EdgeInsets.symmetric(vertical: 16.0),
+                child: Text("Scenes")),
 
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16.0),
+              child: ElevatedButton(
+                onPressed: () {
+                  _showPicker(context);
+                },
+                child: const Text('Pick Scene'),
+              ),
+            ),
+
+            if(_imageBytes!=null)
+              Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16.0),
+                  child: Image.memory(_imageBytes!)),
+            if(_imageBytes!=null)
+              Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16.0),
+                  child: ElevatedButton(child: const Text("Upload"),
+                      onPressed: () => uploadScene64())),
           ],
         ),
       ),

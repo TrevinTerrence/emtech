@@ -9,9 +9,10 @@ class PopMovie {
   int runtime;
   final List? genres;
   final List? actor;
+  List? scene;
 
 
-  PopMovie({required this.id, required this.title,required this.homepage, required this.overview,required this.releaseDate,required this.voteAverage, this.url, required this.runtime, this.genres, this.actor});
+  PopMovie({required this.id, required this.title,required this.homepage, required this.overview,required this.releaseDate,required this.voteAverage, this.url, required this.runtime, this.genres, this.actor,this.scene});
   factory PopMovie.fromJson(Map<String, dynamic> json) {
     return PopMovie(
       id: json['movie_id'] as int,
@@ -23,7 +24,8 @@ class PopMovie {
       url: json['url'],
       runtime: json['runtime'] as int,
       genres: json['genres'],
-      actor: json['actor']
+      actor: json['actor'],
+      scene: json['scenes']
     );
   }
 }
